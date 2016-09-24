@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int signature_check = 1;
+
 char get_single_char()
 {
 	char c = getchar();
@@ -21,34 +23,38 @@ void print_logo()
 			putchar(c);
 		fclose(file);
 	}
-
-	//printf("%s", text);
 }
 
 void print_menu()
 {
 	char *menu_string =     "1. Flash OTA.zip.\n"
-				"2. Full Revert Android.\n"
-				"3. Partial Revert Android.\n"
+				"2. Disable Signature check.\n"
+				"3. Android Partial Revert(Only system folder).\n"
 				"4. Enter Shell.\n"
 				"\n"
 				"Please enter an option :";
 
 	print_logo();
+	if (!signature_check)
+	{
+		printf("Signature verification is disabled!\n");
+	}
 	printf("%s", menu_string);
+}
+
+void disable_check()
+{
+	signature_check = 0;
 }
 
 void recover_android(int choice)
 {
 	print_logo();
 	printf("Recovering Android partition.... Please wait....\n");
-	if (choice == '2')
-	{
-		printf("Formating Android...\n");
-		system("rm -rf /android/*");
-	}
+	printf("Formating Android System...\n");
+	system("rm -rf /android/system");
 	printf("Copying files...\n");
-	system("cp -rp /backup/android/* /android/");
+	system("cp -rp /backup/android/system /android/");
 	printf("Done!\n");
 	printf("Press enter to continue.");
 	get_single_char();	
@@ -57,7 +63,20 @@ void recover_android(int choice)
 void flash_ota()
 {
 	print_logo();
-	system("/tmp/ota/META-INF/com/google/android/update-binary");
+	if (signature_check)
+	{
+		if (!verify_signature())
+		{
+			printf("Signature verification failed.\n");
+			return;
+		}
+	}
+	// unzips the ota update...
+	// TODO: kinda dangerous to use system for this but it will have to do for now
+	// to be rewritten
+	system("rm -rf /root/ota/*");
+	system("unzip -d /root/ota/");
+	system("/root/ota/META-INF/com/google/android/update-binary");
 	printf("Done!\n");
 	printf("Press enter to continue.");
 	get_single_char();	
@@ -83,11 +102,13 @@ int main()
 				flash_ota();
 				break;
 			case '2':
+				disable_check();
+				break;
 			case '3':
 				recover_android(choice);
 				break;
 			case '4':
-				system("/bin/bash");	
+				system("su -c /bin/bash seed");
 				break;
 			default:
 				printf("Please enter a 1, 2 or 3.\n");
