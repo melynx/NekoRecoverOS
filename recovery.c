@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+
+#include "verifier/verifier.h"
+
+const char *ota_path = "/home/seed/ota/ota.zip";
+
 int signature_check = 1;
 
 char get_single_char()
@@ -9,6 +15,12 @@ char get_single_char()
 	char d = c;
 	while((d != '\n' && c != EOF)) d = getchar();
 	return c;
+}
+
+void enter_key()
+{
+	printf("Press enter to continue.");
+	get_single_char();	
 }
 
 void print_logo()
@@ -28,23 +40,29 @@ void print_logo()
 void print_menu()
 {
 	char *menu_string =     "1. Flash OTA.zip.\n"
-				"2. Disable Signature check.\n"
-				"3. Android Partial Revert(Only system folder).\n"
-				"4. Enter Shell.\n"
+				"2. Toggle Signature check.\n"
+				"3. Enter usermode Shell.\n"
+				"4. Enter root Shell.\n"
+				"5. Restart.\n"
 				"\n"
 				"Please enter an option :";
 
 	print_logo();
-	if (!signature_check)
-	{
-		printf("Signature verification is disabled!\n");
-	}
 	printf("%s", menu_string);
 }
 
 void disable_check()
 {
-	signature_check = 0;
+	signature_check = !signature_check;
+	if (signature_check)
+	{
+		printf("\nSignature verification is enabled!\n");
+	}
+	else
+	{
+		printf("\nSignature verification is disabled!\n");
+	}
+	enter_key();
 }
 
 void recover_android(int choice)
@@ -56,30 +74,57 @@ void recover_android(int choice)
 	printf("Copying files...\n");
 	system("cp -rp /backup/android/system /android/");
 	printf("Done!\n");
-	printf("Press enter to continue.");
-	get_single_char();	
+	enter_key();
 }
+
 
 void flash_ota()
 {
+	system("rm -rf /root/ota/working/*");
+	system("rm -rf /root/ota/temp/*");
+	system("rm -rf /root/ota/certs/*");
+
 	print_logo();
+	if (access(ota_path, F_OK))
+	{
+		printf("OTA.zip file doesn't exists...\n");
+		enter_key();
+		return;
+	}
+	// copies the file to the root working directory...
+	system("cp /home/seed/ota/ota.zip /root/ota/temp/ota.zip");
+
+	// prepare the certificate for verification
+	if (access("/android/system/etc/security/otacerts.zip", F_OK))
+	{
+		printf("/android/system/etc/security/otacerts.zip is missing...");
+		enter_key();
+		return;
+	}
+	system("cp /android/system/etc/security/otacerts.zip /root/ota/temp/otacerts.zip");
+	system("unzip -d /root/ota/certs/ /root/ota/temp/otacerts.zip");
+
 	if (signature_check)
 	{
-		if (!verify_signature())
+		if (!verify_file("/root/ota/temp/ota.zip") == VERIFY_SUCCESS)
 		{
 			printf("Signature verification failed.\n");
+			enter_key();
 			return;
+		}
+		else
+		{
+			printf("Signature verification success!\n");
 		}
 	}
 	// unzips the ota update...
 	// TODO: kinda dangerous to use system for this but it will have to do for now
 	// to be rewritten
-	system("rm -rf /root/ota/*");
-	system("unzip -d /root/ota/");
-	system("/root/ota/META-INF/com/google/android/update-binary");
+	system("unzip -d /root/ota/working/ /root/ota/temp/ota.zip");
+	system("chmod -R u+x /root/ota/working/");
+	system("/root/ota/working/META-INF/com/google/android/update-binary");
 	printf("Done!\n");
-	printf("Press enter to continue.");
-	get_single_char();	
+	enter_key();
 }
 
 
@@ -105,10 +150,13 @@ int main()
 				disable_check();
 				break;
 			case '3':
-				recover_android(choice);
+				system("sudo -i -u seed");
 				break;
 			case '4':
-				system("su -c /bin/bash seed");
+				system("sudo -i -u root");
+				break;
+			case '5':
+				system("reboot");
 				break;
 			default:
 				printf("Please enter a 1, 2 or 3.\n");

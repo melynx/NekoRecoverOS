@@ -1,6 +1,7 @@
 import struct
 import hashlib
-from M2Crypto import SMIME, X509
+import binascii
+from M2Crypto import BIO, EVP, SMIME, X509, m2
 
 FOOTER_SIZE = 6
 EOCD_HEADER_SIZE = 22
@@ -43,7 +44,7 @@ def verify_file(path):
 
 	s = SMIME.SMIME()
 	# Load the signer's cert.
-	x509 = X509.load_cert('signer.pem')
+	x509 = X509.load_cert('certificate.pem')
 	sk = X509.X509_Stack()
 	sk.push(x509)
 	s.set_x509_stack(sk)
@@ -51,15 +52,21 @@ def verify_file(path):
 	# Load the signer's CA cert. In this case, because the signer's
 	# cert is self-signed, it is the signer's cert itself.
 	st = X509.X509_Store()
-	st.load_info('signer.pem')
+	st.load_info('certificate.pem')
 	s.set_x509_store(st)
 	
 	# Load the data, verify it.
-	p7, data = SMIME.smime_load_pkcs7('sign.p7')
+        # signature is a buffer containing the signature in pkcs#7 DER format
+        p7bio = BIO.MemoryBuffer(signature)
+        contentbio = BIO.MemoryBuffer(zip_content)
+        contentbio = BIO.openfile('ota-unsign.zip')
+        p7 = SMIME.PKCS7(m2.pkcs7_read_bio_der(p7bio._ptr()))
+        md = EVP.MessageDigest('sha1')
+        md.update(zip_content)
+        print binascii.b2a_hex(md.digest())
 	v = s.verify(p7)
+	v = s.verify(p7, contentbio)
 	print v
-	print data
-	print data.read()
 
 
-verify_file('../ota-signed.zip')
+verify_file('ota-signed.zip')

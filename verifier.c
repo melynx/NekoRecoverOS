@@ -124,16 +124,16 @@ int verify_file(const char* path)
     size_t signature_size = signature_start - FOOTER_SIZE;
 
     int ret = openssl_verify_signature(signature, signature_size, content, signed_len); 
+
     free(eocd);
     free(content);
+
     return ret;
 }
 
 int openssl_verify_signature(unsigned char *signature, size_t signature_len, unsigned char *content, size_t content_len)
 {
     // zl: use openssl instead of mincrypt to do the certificate verification
-    //
-    //
     int ret = 1;
 
     BIO *in = NULL, *tbio = NULL, *p7bio = NULL;
@@ -147,8 +147,8 @@ int openssl_verify_signature(unsigned char *signature, size_t signature_len, uns
     /* Set up trusted CA certificate store */
     st = X509_STORE_new();
 
-    /* Read in signer certificate and private key */
-    tbio = BIO_new_file("certificate.pem", "r");
+    /* Read in signer certificate*/
+    tbio = BIO_new_file("/root/ota/certs/ota_cert.pem", "r");
 
     if (!tbio)
         goto err;
