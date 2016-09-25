@@ -1,6 +1,6 @@
 import struct
 import hashlib
-import M2Crypto as m2
+from M2Crypto import SMIME, X509
 
 FOOTER_SIZE = 6
 EOCD_HEADER_SIZE = 22
@@ -41,7 +41,25 @@ def verify_file(path):
         signature = eocd[eocd_size-signature_start:signature_size]
         print("Signature (offset: %x, length: %d):" % (length-signature_start, signature_size)) 
 
-        s = m2.SMIME.load_pkcs7(
+	s = SMIME.SMIME()
+	# Load the signer's cert.
+	x509 = X509.load_cert('signer.pem')
+	sk = X509.X509_Stack()
+	sk.push(x509)
+	s.set_x509_stack(sk)
+	
+	# Load the signer's CA cert. In this case, because the signer's
+	# cert is self-signed, it is the signer's cert itself.
+	st = X509.X509_Store()
+	st.load_info('signer.pem')
+	s.set_x509_store(st)
+	
+	# Load the data, verify it.
+	p7, data = SMIME.smime_load_pkcs7('sign.p7')
+	v = s.verify(p7)
+	print v
+	print data
+	print data.read()
 
 
 verify_file('../ota-signed.zip')
