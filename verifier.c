@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <dirent.h>
+
 #include <openssl/pem.h>
 #include <openssl/pkcs7.h>
 #include <openssl/err.h>
@@ -147,18 +149,37 @@ int openssl_verify_signature(unsigned char *signature, size_t signature_len, uns
     /* Set up trusted CA certificate store */
     st = X509_STORE_new();
 
-    /* Read in signer certificate*/
-    tbio = BIO_new_file("/root/ota/certs/ota_cert.pem", "r");
+    /* Read in signer certificates */
+    DIR *dir;
+    struct dirent *dp;
+    char buf[1024];
+    char *cert_dir = "/root/ota/certs/";
 
-    if (!tbio)
-        goto err;
+    dir = opendir(cert_dir);
+    if (dir != NULL)
+    {
+    	while (dp = readdir(dir))
+	{
+		if (strncmp(dp->d_name, ".", 1) == 0)
+			continue;
 
-    cacert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+		strncpy(buf, cert_dir, 1024);
+		strncat(buf, dp->d_name, 1024);
 
-    if (!cacert)
-        goto err;
-    if (!X509_STORE_add_cert(st, cacert))
-        goto err;
+		tbio = BIO_new_file(buf, "r");
+
+		if (!tbio)
+			goto err;
+
+		cacert = PEM_read_bio_X509(tbio, NULL, 0, NULL);
+
+		if (!cacert)
+			goto err;
+		if (!X509_STORE_add_cert(st, cacert))
+			goto err;
+	}
+	(void)closedir(dir);
+    }
 
     in = BIO_new_mem_buf(content, content_len);
     p7bio = BIO_new_mem_buf(signature, signature_len);

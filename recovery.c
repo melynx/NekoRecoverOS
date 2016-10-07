@@ -87,7 +87,7 @@ void flash_ota()
 	print_logo();
 	if (access(ota_path, F_OK))
 	{
-		printf("OTA.zip file doesn't exists...\n");
+		printf("/home/seed/ota/ota.zip file doesn't exists...\n");
 		enter_key();
 		return;
 	}
@@ -102,7 +102,7 @@ void flash_ota()
 		return;
 	}
 	system("cp /android/system/etc/security/otacerts.zip /root/ota/temp/otacerts.zip");
-	system("unzip -d /root/ota/certs/ /root/ota/temp/otacerts.zip");
+	system("unzip -qq -d /root/ota/certs/ /root/ota/temp/otacerts.zip");
 
 	if (signature_check)
 	{
@@ -120,9 +120,10 @@ void flash_ota()
 	// unzips the ota update...
 	// TODO: kinda dangerous to use system for this but it will have to do for now
 	// to be rewritten
-	system("unzip -d /root/ota/working/ /root/ota/temp/ota.zip");
-	system("chmod -R u+x /root/ota/working/");
-	system("/root/ota/working/META-INF/com/google/android/update-binary");
+	system("unzip -qq -d /tmp/ota/working/ /root/ota/temp/ota.zip");
+	//system("chmod -R u+x /root/ota/working/");
+	system("chmod u+x /tmp/ota/working/META-INF/com/google/android/update-binary");
+	system("/tmp/ota/working/META-INF/com/google/android/update-binary");
 	printf("Done!\n");
 	enter_key();
 }
