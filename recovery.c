@@ -121,6 +121,8 @@ void flash_ota()
 	// unzips the ota update...
 	// TODO: kinda dangerous to use system for this but it will have to do for now
 	// to be rewritten
+	system("rm -rf /tmp/ota/");
+	system("mkdir -p /tmp/ota/working/");
 	system("unzip -qq -d /tmp/ota/working/ /root/ota/temp/ota.zip");
 	//system("chmod -R u+x /root/ota/working/");
 	system("chmod u+x /tmp/ota/working/META-INF/com/google/android/update-binary");
