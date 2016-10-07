@@ -102,6 +102,7 @@ void flash_ota()
 		return;
 	}
 	system("cp /android/system/etc/security/otacerts.zip /root/ota/temp/otacerts.zip");
+	system("rm -f /root/ota/certs/*");
 	system("unzip -qq -d /root/ota/certs/ /root/ota/temp/otacerts.zip");
 
 	if (signature_check)
